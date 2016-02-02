@@ -26,7 +26,8 @@ class RotationLockIndicator::Impl
 public:
 
   Impl():
-    m_settings(g_settings_new(m_schema_name)),
+    m_rotation_lock_settings(g_settings_new(m_rotation_lock_schema_name)),
+    m_usage_mode_settings(g_settings_new(m_usage_mode_schema_name)),
     m_action_group(create_action_group())
   {
     // build the rotation lock icon
@@ -44,7 +45,8 @@ public:
   ~Impl()
   {
     g_clear_object(&m_action_group);
-    g_clear_object(&m_settings);
+    g_clear_object(&m_rotation_lock_settings);
+    g_clear_object(&m_usage_mode_settings);
   }
 
   GSimpleActionGroup* action_group() const
@@ -79,6 +81,24 @@ private:
   {
     return g_value_dup_variant(value);
   }
+  static gboolean usage_mode_to_action_state(GValue *value,
+                                           GVariant *variant,
+                                           gpointer /*unused*/)
+  {
+    const gchar* usage_mode = g_variant_get_string(variant, NULL);
+    GVariant* ret_var = g_variant_new_boolean(g_strcmp0(usage_mode, "Windowed") == 0 ? TRUE : FALSE);
+    g_value_set_variant(value, ret_var);
+    return TRUE;
+  }
+
+  static GVariant* action_state_to_usage_mode(const GValue *value,
+                                            const GVariantType * /*expected_type*/,
+                                            gpointer /*unused*/)
+  {
+    GVariant* var = g_value_get_variant(value);
+    GVariant* ret = g_variant_new_string(g_variant_get_boolean(var) == true ? "Windowed" : "Staged");
+    return ret;
+  }
  
   GSimpleActionGroup* create_action_group()
   {
@@ -86,10 +106,12 @@ private:
     GSimpleAction* action;
 
     group = g_simple_action_group_new();
+
+
     action = g_simple_action_new_stateful("rotation-lock",
                                           nullptr,
                                           g_variant_new_boolean(false));
-    g_settings_bind_with_mapping(m_settings, "rotation-lock",
+    g_settings_bind_with_mapping(m_rotation_lock_settings, "rotation-lock",
                                  action, "state",
                                  G_SETTINGS_BIND_DEFAULT,
                                  settings_to_action_state,
@@ -99,8 +121,25 @@ private:
                                  
     g_action_map_add_action(G_ACTION_MAP(group), G_ACTION(action));
     g_object_unref(G_OBJECT(action));
-    g_signal_connect_swapped(m_settings, "changed::rotation-lock",
+    g_signal_connect_swapped(m_rotation_lock_settings, "changed::rotation-lock",
                              G_CALLBACK(on_rotation_lock_setting_changed), this);
+
+
+    action = g_simple_action_new_stateful("usage-mode",
+                                          nullptr,
+                                          g_variant_new_boolean(false));
+    g_settings_bind_with_mapping(m_usage_mode_settings, "usage-mode",
+                                 action, "state",
+                                 G_SETTINGS_BIND_DEFAULT,
+                                 usage_mode_to_action_state,
+                                 action_state_to_usage_mode,
+                                 nullptr,
+                                 nullptr);
+                                 
+    g_action_map_add_action(G_ACTION_MAP(group), G_ACTION(action));
+    g_object_unref(G_OBJECT(action));
+    g_signal_connect_swapped(m_usage_mode_settings, "changed::usage-mode",
+                             G_CALLBACK(on_usage_mode_setting_changed), this);
 
     return group;
   }
@@ -110,6 +149,11 @@ private:
   ***/
 
   static void on_rotation_lock_setting_changed (gpointer gself)
+  {
+    static_cast<Impl*>(gself)->update_phone_header();
+  }
+
+  static void on_usage_mode_setting_changed (gpointer gself)
   {
     static_cast<Impl*>(gself)->update_phone_header();
   }
@@ -126,15 +170,20 @@ private:
     g_menu_append_item(menu, menu_item);
     g_object_unref(menu_item);
 
+    menu_item = g_menu_item_new(_("Windowed mode"), "indicator.usage-mode");
+    g_menu_item_set_attribute(menu_item, "x-canonical-type", "s", "com.canonical.indicator.switch");
+    g_menu_append_item(menu, menu_item);
+    g_object_unref(menu_item);
+
     return G_MENU_MODEL(menu);
   }
 
   void update_phone_header()
   {
     Header h;
-    h.title = _("Rotation");
+    h.title = _("Displays");
     h.a11y = h.title;
-    h.is_visible = g_settings_get_boolean(m_settings, "rotation-lock");
+    h.is_visible = true;//g_settings_get_boolean(m_settings, "rotation-lock");
     h.icon = m_icon;
     m_phone->header().set(h);
   }
@@ -143,9 +192,13 @@ private:
   ****
   ***/
 
-  static constexpr char const * m_schema_name {"com.ubuntu.touch.system"};
-  static constexpr char const * m_rotation_lock_icon_name {"orientation-lock"};
-  GSettings* m_settings = nullptr;
+  static constexpr char const * m_rotation_lock_schema_name {"com.ubuntu.touch.system"};
+  static constexpr char const * m_rotation_lock_icon_name {"view-fullscreen"};
+  GSettings* m_rotation_lock_settings = nullptr;
+
+  static constexpr char const * m_usage_mode_schema_name {"com.canonical.Unity8"};
+  GSettings* m_usage_mode_settings = nullptr;
+
   GSimpleActionGroup* m_action_group = nullptr;
   std::shared_ptr<SimpleProfile> m_phone;
   std::shared_ptr<GIcon> m_icon;
@@ -185,4 +238,3 @@ RotationLockIndicator::name() const
 /***
 ****
 ***/
-
