@@ -56,6 +56,6 @@ TEST_F(RotationLockFixture, CheckIndicator)
   ASSERT_EQ(1, profiles.size());
   std::shared_ptr<Profile> phone = profiles[0];
   ASSERT_EQ(std::string("phone"), phone->name());
-  ASSERT_FALSE(phone->header()->is_visible);
+  ASSERT_TRUE(phone->header()->is_visible);
 }
 
