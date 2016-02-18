@@ -170,7 +170,7 @@ private:
     g_menu_append_item(menu, menu_item);
     g_object_unref(menu_item);
 
-    menu_item = g_menu_item_new(_("Windowed mode"), "indicator.usage-mode");
+    menu_item = g_menu_item_new(_("Desktop mode"), "indicator.usage-mode");
     g_menu_item_set_attribute(menu_item, "x-canonical-type", "s", "com.canonical.indicator.switch");
     g_menu_append_item(menu, menu_item);
     g_object_unref(menu_item);
