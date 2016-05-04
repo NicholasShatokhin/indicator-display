@@ -1,3 +1,10 @@
+indicator-display (0.1+16.04.20160504-0ubuntu1) xenial; urgency=medium
+
+  * Fix timing issue when talking to com.canonical.UnityGreeter on the
+    bus.
+
+ -- Charles Kerr <charles.kerr@canonical.com>  Wed, 04 May 2016 00:04:56 +0000
+
 indicator-display (0.1+16.04.20160324.1-0ubuntu1) xenial; urgency=medium
 
   [ Charles Kerr ]
